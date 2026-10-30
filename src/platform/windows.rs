@@ -1727,6 +1727,7 @@ copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\
 chcp 65001
 md \"{path}\"
 {copy_exe}
+{rename_exe}
 reg add {subkey} /f
 reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{display_icon}\"
 reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
@@ -1765,6 +1766,13 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
         sleep = if debug { "timeout 300" } else { "" },
         dels = if debug { "" } else { &dels },
         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
+        // Custom-branded builds compile to a binary named after the cargo package
+        // (e.g. "rustdesk.exe"), not after the runtime `app_name` ("TFVRemote.exe").
+        // Without this, `copy_exe` lands the file under its original name while every
+        // shortcut/registry entry above points at "{app_name}.exe", so the installed
+        // shortcut has nothing to launch. Stock builds are unaffected: `rename_exe_cmd`
+        // is a no-op when the source filename already matches `app_name`.
+        rename_exe = rename_exe_cmd(&src_exe, &path)?,
         import_config = get_import_config(&exe),
     );
     run_cmds(cmds, debug, "install")?;
